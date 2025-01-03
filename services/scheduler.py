@@ -1,5 +1,5 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from ..routes.outcoming_call import make_outgoing_call
+from ..routes.outbound_call import make_outgoing_call
 
 scheduler = BackgroundScheduler()
 

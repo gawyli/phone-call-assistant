@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .routes.incoming_call import router_incoming
-from .routes.outcoming_call import router_outcoming
+from .routes.outbound_call import router_outcoming
 from .services.scheduler import schedule_outgoing_call
 from .services.openai_ws import router_media
 from .config import OPENAI_API_KEY, PORT
