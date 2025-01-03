@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Connect
-from config import OUTBOUND_PHONE_NUMBER, ACCOUNT_SID, AUTH_TOKEN, CALLER_ID
+from config import OUTBOUND_PHONE_NUMBER, ACCOUNT_SID, AUTH_TOKEN, CALLER_ID, WEBHOOK_HOST
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ async def make_outgoing_call():
         return {"error": "Missing configuration or phone number."}
     
     client = Client(ACCOUNT_SID, AUTH_TOKEN)
-    webhook_url = f"https://turbo-chainsaw-p9w4gw4qqqq2r76p-5050.app.github.dev/outcoming-call-webhook"
+    webhook_url = f"https://{WEBHOOK_HOST}/outcoming-call-webhook"
     
     call = client.calls.create(
         to=OUTBOUND_PHONE_NUMBER,
@@ -37,7 +37,7 @@ async def handle_outcoming_call_webhook(request: Request):
     response.pause(length=1)
     
     # Connect to media stream websocket
-    host = "turbo-chainsaw-p9w4gw4qqqq2r76p-5050.app.github.dev/" #request.url.hostname
+    host = WEBHOOK_HOST #request.url.hostname <- in prod we use this instead hard coded
     connect = Connect()
     connect.stream(url=f'wss://{host}/media-stream')
     response.append(connect)

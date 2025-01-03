@@ -28,9 +28,9 @@ async def index_page():
     return {"message": "Twilio Media Stream Server is running!"}
 
 if __name__ == "__main__":
-    logger.info("Scheduling outgoing call at 07:00")
+    logger.info("Scheduling outgoing call")
     # e.g. schedule call at 07:00
-    schedule_outgoing_call("14:04")
+    schedule_outgoing_call("14:37")
     
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)

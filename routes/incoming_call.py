@@ -14,7 +14,7 @@ async def handle_incoming_call(request: Request):
     response.say("Please wait while we connect your call.")
     response.pause(length=1)
     response.say("O.K. you can start talking!")
-    host = "turbo-chainsaw-p9w4gw4qqqq2r76p-5050.app.github.dev/" #request.url.hostname
+    host = request.url.hostname
     connect = Connect()
     connect.stream(url=f'wss://{host}/media-stream')
     response.append(connect)
