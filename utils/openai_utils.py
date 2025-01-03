@@ -1,10 +1,11 @@
+import logging
 import json
-import base64
-import asyncio
-import websockets
-from . import config
+import config
+
+logger = logging.getLogger(__name__)
 
 async def initialize_session(openai_ws):
+    logger.info("Initializing OpenAI session.")
     session_update = {
         "type": "session.update",
         "session": {
@@ -21,6 +22,7 @@ async def initialize_session(openai_ws):
     await send_initial_conversation_item(openai_ws)
 
 async def send_initial_conversation_item(openai_ws):
+    logger.info("Sending initial conversation item.")
     initial_conversation_item = {
         "type": "conversation.item.create",
         "item": {

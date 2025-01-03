@@ -1,18 +1,24 @@
 from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
-from ..services.openai_ws import initialize_session
-from ..config import OPENAI_API_KEY, LOG_EVENT_TYPES, SHOW_TIMING_MATH, VOICE
+from utils.openai_utils import initialize_session
+from config import OPENAI_API_KEY, LOG_EVENT_TYPES
 import websockets
 import json
 import base64
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 router_media = APIRouter()
 
 @router_media.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
+    logger.info("Client connected to /media-stream.")
     print("Client connected")
+
     await websocket.accept()
+
     async with websockets.connect(
         'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
         extra_headers={
@@ -21,6 +27,7 @@ async def handle_media_stream(websocket: WebSocket):
         }
     ) as openai_ws:
         await initialize_session(openai_ws)
+        
         stream_sid = None
         latest_media_timestamp = 0
         last_assistant_item = None
