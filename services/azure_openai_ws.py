@@ -23,7 +23,7 @@ async def handle_media_stream(websocket: WebSocket):
         await websocket.accept()
 
         async with RTLowLevelClient(
-            url=f"wss://{AZURE_OPENAI_ENDPOINT}/openai/realtime",
+            url=f"wss://{AZURE_OPENAI_ENDPOINT}",
             key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY),
             azure_deployment=AZURE_OPENAI_DEPLOYMENT
         ) as openai_ws:
