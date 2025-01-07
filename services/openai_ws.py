@@ -10,9 +10,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router_media = APIRouter()
+router_media_openai = APIRouter()
 
-@router_media.websocket("/media-stream-openai")
+@router_media_openai.websocket("/media-stream-openai")
 async def handle_media_stream(websocket: WebSocket):
     logger.info("Client connected to /media-stream-openai.")
     print("Client connected")
