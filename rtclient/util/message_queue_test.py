@@ -4,7 +4,7 @@
 import asyncio
 
 import pytest
-from message_queue import MessageQueue
+from .message_queue import MessageQueue
 
 
 class Message:

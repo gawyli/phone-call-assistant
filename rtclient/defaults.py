@@ -2,7 +2,7 @@
 # Licensed under the MIT License.
 
 
-from rtclient.models import AudioFormat, ServerVAD, TurnDetection, Voice
+from rtclient import AudioFormat, ServerVAD, TurnDetection, Voice
 
 DEFAULT_CONVERSATION: str = "default"
 DEFAULT_TEMPERATURE: float = 0.6

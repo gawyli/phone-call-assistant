@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from model_helpers import ModelWithDefaults
+from .model_helpers import ModelWithDefaults
 
 
 class Bar(ModelWithDefaults):
