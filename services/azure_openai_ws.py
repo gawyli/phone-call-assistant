@@ -1,20 +1,24 @@
 from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
-from utils.openai_utils import initialize_session
-from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, LOG_EVENT_TYPES
+#from utils.azure_openai_utils import initialize_session
+from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID ,LOG_EVENT_TYPES
 import json
 import base64
 import asyncio
+import audioop
 import logging
 from azure.core.credentials import AzureKeyCredential
+from azure.identity.aio import DefaultAzureCredential
 
 from rtclient import (
     InputAudioBufferAppendMessage,
     InputAudioTranscription,
     RTLowLevelClient,
-    ServerVAD,
+    ItemTruncatedMessage,
     SessionUpdateMessage,
     SessionUpdateParams,
+    ServerVAD,
+
 )
 
 logger = logging.getLogger(__name__)
@@ -30,19 +34,23 @@ async def handle_media_stream(websocket: WebSocket):
         await websocket.accept()
 
         async with RTLowLevelClient(
-            url=f"wss://{AZURE_OPENAI_ENDPOINT}",
+            url=AZURE_OPENAI_ENDPOINT,
             key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY),
             azure_deployment=AZURE_OPENAI_DEPLOYMENT
-        ) as openai_ws:
-            await openai_ws.send(
-                SessionUpdateMessage(
-                    session=SessionUpdateParams(
-                        turn_detection=ServerVAD(type="server_vad"),
-                    )
+        ) as azure_openai_ws:
+            await azure_openai_ws.send(
+            SessionUpdateMessage(
+                session=SessionUpdateParams(
+                    voice="dan",
+                    input_audio_format="g711_ulaw",
+                    output_audio_format="g711_ulaw",
+                    turn_detection=ServerVAD(type="server_vad"),                  
                 )
             )
+        )
             
             stream_sid = None
+            event_id = None
             latest_media_timestamp = 0
             last_assistant_item = None
             mark_queue = []
@@ -53,10 +61,10 @@ async def handle_media_stream(websocket: WebSocket):
                 try:
                     async for message in websocket.iter_text():
                         data = json.loads(message)
-                        if data['event'] == 'media' and not openai_ws.closed:
+                        if data['event'] == 'media' and not azure_openai_ws.closed:
                             latest_media_timestamp = int(data['media']['timestamp'])
                             audio_append = InputAudioBufferAppendMessage(audio=data['media']['payload'])
-                            await openai_ws.send(audio_append)
+                            await azure_openai_ws.send(audio_append)
                         elif data['event'] == 'start':
                             stream_sid = data['start']['streamSid']
                             latest_media_timestamp = 0
@@ -65,14 +73,14 @@ async def handle_media_stream(websocket: WebSocket):
                             if mark_queue:
                                 mark_queue.pop(0)
                 except WebSocketDisconnect:
-                    if not openai_ws.closed:
-                        await openai_ws.close()
+                    if not azure_openai_ws.closed:
+                        await azure_openai_ws.close()
 
             async def send_to_twilio():
-                nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio
+                nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio, event_id
                 try:
-                    async for openai_message in openai_ws:
-                        response = openai_message.model_dump()
+                    async for azure_openai_message in azure_openai_ws:
+                        response = azure_openai_message.model_dump()
                         if response['type'] in LOG_EVENT_TYPES:
                             print(f"Received event: {response['type']}", response)
 
@@ -88,27 +96,24 @@ async def handle_media_stream(websocket: WebSocket):
 
                         if response.get('type') == 'input_audio_buffer.speech_started':
                             if last_assistant_item:
+                                event_id = response.get('event_id')
                                 await handle_speech_started_event()
 
                 except Exception as e:
                     print(f"Error in send_to_twilio: {e}")
 
             async def handle_speech_started_event():
-                nonlocal response_start_timestamp_twilio, last_assistant_item
+                nonlocal response_start_timestamp_twilio, last_assistant_item, event_id
                 if mark_queue and response_start_timestamp_twilio is not None:
                     elapsed_time = latest_media_timestamp - response_start_timestamp_twilio
                     if last_assistant_item:
-                        truncate_event = {
-                            "type": "conversation.item.truncate",
-                            "item_id": last_assistant_item,
-                            "content_index": 0,
-                            "audio_end_ms": elapsed_time
-                        }
-                        await openai_ws.send(truncate_event)
+                        truncate_message = ItemTruncatedMessage(event_id=event_id, type="conversation.item.truncated", item_id=last_assistant_item, content_index=0, audio_end_ms=elapsed_time)
+                        await azure_openai_ws.send(truncate_message)
                     await websocket.send_json({"event": "clear","streamSid": stream_sid})
                     mark_queue.clear()
                     last_assistant_item = None
                     response_start_timestamp_twilio = None
+                    event_id = None
 
             async def send_mark(connection, sid):
                 if sid:
