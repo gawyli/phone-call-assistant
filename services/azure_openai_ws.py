@@ -2,24 +2,17 @@ from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
 from utils.openai_utils import initialize_session
 from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, LOG_EVENT_TYPES
-import websockets
 import json
 import base64
 import asyncio
 import logging
+from azure.core.credentials import AzureKeyCredential
+
+from rtclient import RTLowLevelClient, InputAudioBufferAppendMessage, SessionUpdateMessage, SessionUpdateParams, ServerVAD
 
 logger = logging.getLogger(__name__)
 
 router_media_azure = APIRouter()
-
-# Azure OpenAI Realtime API WebSocket URL format
-AZURE_REALTIME_URL = f"wss://{AZURE_OPENAI_ENDPOINT}/openai/realtime?api-version=2024-10-01-preview&deployment={AZURE_OPENAI_DEPLOYMENT}"
-
-async def _get_auth(api_key):
-        if api_key:
-            return {"api-key": api_key}
-        else:
-            return {}
 
 @router_media_azure.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
@@ -29,16 +22,18 @@ async def handle_media_stream(websocket: WebSocket):
 
         await websocket.accept()
 
-        auth_headers = await _get_auth()
-        headers = {
-            **auth_headers
-        }
-
-        async with websockets.connect(
-            AZURE_REALTIME_URL,
-            extra_headers=headers
+        async with RTLowLevelClient(
+            url=f"wss://{AZURE_OPENAI_ENDPOINT}/openai/realtime",
+            key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY),
+            azure_deployment=AZURE_OPENAI_DEPLOYMENT
         ) as openai_ws:
-            await initialize_session(openai_ws)
+            await openai_ws.send(
+                SessionUpdateMessage(
+                    session=SessionUpdateParams(
+                        turn_detection=ServerVAD(type="server_vad")
+                    )
+                )
+            )
             
             stream_sid = None
             latest_media_timestamp = 0
@@ -51,10 +46,10 @@ async def handle_media_stream(websocket: WebSocket):
                 try:
                     async for message in websocket.iter_text():
                         data = json.loads(message)
-                        if data['event'] == 'media' and openai_ws.open:
+                        if data['event'] == 'media' and not openai_ws.closed:
                             latest_media_timestamp = int(data['media']['timestamp'])
-                            audio_append = {"type": "input_audio_buffer.append","audio": data['media']['payload']}
-                            await openai_ws.send(json.dumps(audio_append))
+                            audio_append = InputAudioBufferAppendMessage(audio=data['media']['payload'])
+                            await openai_ws.send(audio_append)
                         elif data['event'] == 'start':
                             stream_sid = data['start']['streamSid']
                             latest_media_timestamp = 0
@@ -63,14 +58,14 @@ async def handle_media_stream(websocket: WebSocket):
                             if mark_queue:
                                 mark_queue.pop(0)
                 except WebSocketDisconnect:
-                    if openai_ws.open:
+                    if not openai_ws.closed:
                         await openai_ws.close()
 
             async def send_to_twilio():
                 nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio
                 try:
                     async for openai_message in openai_ws:
-                        response = json.loads(openai_message)
+                        response = openai_message.model_dump()
                         if response['type'] in LOG_EVENT_TYPES:
                             print(f"Received event: {response['type']}", response)
 
@@ -102,7 +97,7 @@ async def handle_media_stream(websocket: WebSocket):
                             "content_index": 0,
                             "audio_end_ms": elapsed_time
                         }
-                        await openai_ws.send(json.dumps(truncate_event))
+                        await openai_ws.send(truncate_event)
                     await websocket.send_json({"event": "clear","streamSid": stream_sid})
                     mark_queue.clear()
                     last_assistant_item = None
