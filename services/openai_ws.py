@@ -14,7 +14,7 @@ router_media = APIRouter()
 
 @router_media.websocket("/media-stream-openai")
 async def handle_media_stream(websocket: WebSocket):
-    logger.info("Client connected to /media-stream.")
+    logger.info("Client connected to /media-stream-openai.")
     print("Client connected")
 
     await websocket.accept()

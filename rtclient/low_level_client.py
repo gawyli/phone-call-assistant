@@ -44,7 +44,7 @@ class RTLowLevelClient:
             if model is None:
                 raise ValueError("model is required for OpenAI")
 
-        self._url = url
+        self._url = url if self._is_azure_openai else "wss://api.openai.com"
         self._token_credential = token_credential
         self._key_credential = key_credential
         self._session = ClientSession(base_url=self._url)

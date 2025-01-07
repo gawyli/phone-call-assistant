@@ -19,6 +19,8 @@ AZURE_TENANT_ID = os.getenv('AZURE_TENANT_ID')
 
 # OpenAI API key
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL')
+
 PORT = int(os.getenv('PORT', 5050))
 VOICE = 'ballad'
 SYSTEM_MESSAGE = (
