@@ -1,7 +1,6 @@
 from rtclient import (
     ItemCreateMessage,
     UserMessageItem,
-    UserContentPart,
     InputTextContentPart,
     ResponseCreateMessage,
     SessionUpdateMessage,
@@ -13,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def initialize_session(client_ws):
-    logger.info("Initializing OpenAI session.")
+    logger.info(f"Initializing {client_ws._azure_deployment} session.")
     session_update = SessionUpdateMessage(session=SessionUpdateParams(
                                             voice="dan",
                                             input_audio_format="g711_ulaw",
@@ -27,8 +26,11 @@ async def initialize_session(client_ws):
 
 async def send_initial_conversation_item(client_ws):
     logger.info("Sending initial conversation item.")  
-    initial_conversation_item = ItemCreateMessage(item=UserMessageItem(content=UserContentPart(
-        InputTextContentPart(text="Greet the user with very positive Morning Hello. Ask them how was the sleep last night."))))
+
+    content_part = InputTextContentPart(
+        text="Greet the user with very positive Morning Hello. Ask them how was the sleep last night."
+    )
+    initial_conversation_item = ItemCreateMessage(item=UserMessageItem(content=[content_part]))
     
     await client_ws.send(initial_conversation_item)
     await client_ws.send(ResponseCreateMessage())
