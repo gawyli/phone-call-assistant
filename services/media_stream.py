@@ -3,16 +3,16 @@ from fastapi.websockets import WebSocketDisconnect
 from utils.media_stream_utils import initialize_session
 from azure.core.credentials import AzureKeyCredential
 from config import OPENAI_API_KEY, OPENAI_MODEL, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, LOG_EVENT_TYPES
-import json
-import base64
-import asyncio
-import logging
-
 from rtclient import (
     InputAudioBufferAppendMessage,
     RTLowLevelClient,
     ItemTruncatedMessage,
 )
+import json
+import base64
+import asyncio
+import logging
+
 
 logger = logging.getLogger(__name__)
 
