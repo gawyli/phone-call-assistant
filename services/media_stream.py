@@ -27,9 +27,12 @@ async def handle_media_stream(websocket: WebSocket):
         await websocket.accept()
 
         is_azure = False
-        if OPENAI_API_KEY and OPENAI_MODEL is None:
+        if not OPENAI_API_KEY or not OPENAI_MODEL:
             is_azure = True
-        
+            logger.info("Using Azure OpenAI Realtime API")
+        else:
+            logger.info("Using OpenAI Realtime API")
+    
         async with RTLowLevelClient(
             url=AZURE_OPENAI_ENDPOINT if is_azure else None,
             key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY if is_azure else OPENAI_API_KEY),
