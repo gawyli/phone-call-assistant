@@ -1,25 +1,19 @@
 from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
-#from utils.azure_openai_utils import initialize_session
 from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID ,LOG_EVENT_TYPES
-import json
-import base64
-import asyncio
-import audioop
-import logging
 from azure.core.credentials import AzureKeyCredential
-from azure.identity.aio import DefaultAzureCredential
-
 from rtclient import (
     InputAudioBufferAppendMessage,
-    InputAudioTranscription,
     RTLowLevelClient,
     ItemTruncatedMessage,
     SessionUpdateMessage,
     SessionUpdateParams,
     ServerVAD,
-
 )
+import json
+import base64
+import asyncio
+import logging
 
 logger = logging.getLogger(__name__)
 

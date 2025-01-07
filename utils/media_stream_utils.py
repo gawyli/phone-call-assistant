@@ -1,7 +1,3 @@
-import logging
-import json
-import config
-
 from rtclient import (
     ItemCreateMessage,
     UserMessageItem,
@@ -11,8 +7,8 @@ from rtclient import (
     SessionUpdateMessage,
     SessionUpdateParams,
     ServerVAD,
-
 )
+import logging
 
 logger = logging.getLogger(__name__)
 
