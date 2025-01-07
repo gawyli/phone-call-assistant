@@ -16,21 +16,25 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router_media_azure = APIRouter()
+router_media = APIRouter()
 
-@router_media_azure.websocket("/media-stream")
+@router_media.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
     try:
         logger.info("Client connected to /media-stream.")
         print("Client connected")
 
         await websocket.accept()
+
+        is_azure = False
+        if OPENAI_API_KEY and OPENAI_MODEL is None:
+            is_azure = True
         
         async with RTLowLevelClient(
-            url=AZURE_OPENAI_ENDPOINT if OPENAI_API_KEY is None else None,
-            key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY if OPENAI_API_KEY is None else OPENAI_API_KEY),
-            azure_deployment=AZURE_OPENAI_DEPLOYMENT if OPENAI_API_KEY is None else None,
-            model=OPENAI_MODEL if AZURE_OPENAI_API_KEY is None else None
+            url=AZURE_OPENAI_ENDPOINT if is_azure else None,
+            key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY if is_azure else OPENAI_API_KEY),
+            azure_deployment=AZURE_OPENAI_DEPLOYMENT if is_azure else None,
+            model=None if is_azure else OPENAI_MODEL
         ) as client:
             await initialize_session(client)
         
