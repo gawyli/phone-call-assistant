@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 router_media = APIRouter()
 
-@router_media.websocket("/media-stream")
+@router_media.websocket("/media-stream-openai")
 async def handle_media_stream(websocket: WebSocket):
     logger.info("Client connected to /media-stream.")
     print("Client connected")
