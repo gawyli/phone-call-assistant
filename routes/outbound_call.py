@@ -37,7 +37,7 @@ async def handle_outcoming_call_webhook(request: Request):
     response.pause(length=1)
     
     # Connect to media stream websocket
-    host = request.url.hostname # <- in prod we use this instead hard coded
+    host = WEBHOOK_HOST #request.url.hostname <- in prod we use this instead hard coded
     connect = Connect()
     connect.stream(url=f'wss://{host}/media-stream')
     response.append(connect)

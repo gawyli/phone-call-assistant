@@ -31,7 +31,7 @@ async def index_page():
 if __name__ == "__main__":
     logger.info("Scheduling outgoing call")
     # e.g. schedule call at 07:00
-    schedule_outgoing_call("00:39")
+    schedule_outgoing_call("11:23")
     
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
