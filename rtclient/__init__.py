@@ -10,8 +10,8 @@ from typing import Literal, Optional, TypeGuard, Union
 from azure.core.credentials import AzureKeyCredential
 from azure.core.credentials_async import AsyncTokenCredential
 
-from rtclient.low_level_client import RTLowLevelClient
-from rtclient.models import (
+from .low_level_client import RTLowLevelClient
+from .models import (
     AssistantContentPart,
     AssistantMessageItem,
     AudioFormat,
@@ -104,8 +104,8 @@ from rtclient.models import (
     Voice,
     create_message_from_dict,
 )
-from rtclient.util.id_generator import generate_id
-from rtclient.util.message_queue import MessageQueueWithError
+from .util.id_generator import generate_id
+from .util.message_queue import MessageQueueWithError
 
 
 class RealtimeException(Exception):

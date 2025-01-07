@@ -8,7 +8,14 @@ import asyncio
 import logging
 from azure.core.credentials import AzureKeyCredential
 
-from rtclient import RTLowLevelClient, InputAudioBufferAppendMessage, SessionUpdateMessage, SessionUpdateParams, ServerVAD
+from rtclient import (
+    InputAudioBufferAppendMessage,
+    InputAudioTranscription,
+    RTLowLevelClient,
+    ServerVAD,
+    SessionUpdateMessage,
+    SessionUpdateParams,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +37,7 @@ async def handle_media_stream(websocket: WebSocket):
             await openai_ws.send(
                 SessionUpdateMessage(
                     session=SessionUpdateParams(
-                        turn_detection=ServerVAD(type="server_vad")
+                        turn_detection=ServerVAD(type="server_vad"),
                     )
                 )
             )

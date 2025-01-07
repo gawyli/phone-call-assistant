@@ -11,22 +11,29 @@ import numpy as np
 import pytest
 import soundfile as sf
 from azure.core.credentials import AzureKeyCredential
-from azure.identity.aio import DefaultAzureCredential
-from dotenv import load_dotenv
+from azure.identity.aio import DefaultAzureCredential, ClientSecretCredential
+from config import AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT, OPENAI_API_KEY, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID
 from scipy.signal import resample
 
-from rtclient import RealtimeException, RTClient, RTInputAudioItem, RTResponse
-from rtclient.models import InputAudioTranscription, InputTextContentPart, NoTurnDetection, ServerVAD, UserMessageItem
+from rtclient import (
+    RealtimeException,
+    RTClient,
+    RTInputAudioItem,
+    RTResponse,
+    InputAudioTranscription,
+    InputTextContentPart,
+    NoTurnDetection,
+    ServerVAD,
+    UserMessageItem
+)
 
-load_dotenv()
+run_live_tests  = True
 
-run_live_tests = os.getenv("LIVE_TESTS") == "true"
+openai_key = OPENAI_API_KEY
+openai_model = "model-1"
 
-openai_key = os.getenv("OPENAI_API_KEY")
-openai_model = os.getenv("OPENAI_MODEL")
-
-azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-azure_openai_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+azure_openai_endpoint = AZURE_OPENAI_ENDPOINT
+azure_openai_deployment = AZURE_OPENAI_DEPLOYMENT
 
 
 def should_run_openai_live_tests():
@@ -37,8 +44,8 @@ def should_run_azure_openai_live_tests():
     return run_live_tests and azure_openai_endpoint is not None and azure_openai_deployment is not None
 
 
-if not run_live_tests:
-    pytest.skip("Skipping live tests")
+#if not run_live_tests:
+    #pytest.skip("Skipping live tests")
 
 
 @pytest.fixture
@@ -96,9 +103,12 @@ async def client(request: pytest.FixtureRequest) -> AsyncGenerator[RTClient, Non
         ):
             yield client
     elif request.param == "azure_openai" and should_run_azure_openai_live_tests():
-        async with (
-            DefaultAzureCredential() as credential,
-            RTClient(
+        credential = ClientSecretCredential(
+            client_id=AZURE_CLIENT_ID,
+            client_secret=AZURE_CLIENT_SECRET,
+            tenant_id=AZURE_TENANT_ID
+        )
+        async with (RTClient(
                 url=azure_openai_endpoint, azure_deployment=azure_openai_deployment, token_credential=credential
             ) as client,
         ):

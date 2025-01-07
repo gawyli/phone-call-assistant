@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from id_generator import generate_id
+from .id_generator import generate_id
 
 
 def test_id_schema():
