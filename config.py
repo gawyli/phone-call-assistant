@@ -1,8 +1,26 @@
 import os
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 load_dotenv()
+
+# Azure OpenAI API key
+AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
+AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
+AZURE_OPENAI_DEPLOYMENT = os.getenv('AZURE_OPENAI_DEPLOYMENT')
+
+parsed_url = urlparse(AZURE_OPENAI_ENDPOINT)
+if not parsed_url.scheme or not parsed_url.netloc:
+    raise ValueError("AZURE_OPENAI_ENDPOINT must be an absolute URL")
+
+AZURE_CLIENT_ID = os.getenv('AZURE_CLIENT_ID')
+AZURE_CLIENT_SECRET = os.getenv('AZURE_CLIENT_SECRET')
+AZURE_TENANT_ID = os.getenv('AZURE_TENANT_ID')
+
+# OpenAI API key
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL')
+
 PORT = int(os.getenv('PORT', 5050))
 VOICE = 'ballad'
 SYSTEM_MESSAGE = (

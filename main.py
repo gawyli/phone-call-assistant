@@ -2,9 +2,9 @@ import logging
 from fastapi import FastAPI
 from routes.incoming_call import router_incoming
 from routes.outbound_call import router_outcoming
+from services.media_stream import router_media
 from services.scheduler import schedule_outgoing_call
-from services.openai_ws import router_media
-from config import OPENAI_API_KEY, PORT
+from config import PORT
 
 # Configure logging
 logging.basicConfig(
@@ -14,8 +14,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 logger.info("Main app starting...")
-if not OPENAI_API_KEY:
-    raise ValueError('Missing the OpenAI API key. Please set it in the .env file.')
 
 app = FastAPI()
 #app.include_router(router_incoming)
@@ -30,7 +28,7 @@ async def index_page():
 if __name__ == "__main__":
     logger.info("Scheduling outgoing call")
     # e.g. schedule call at 07:00
-    schedule_outgoing_call("14:37")
+    schedule_outgoing_call("20:14")
     
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
