@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
-from utils.media_stream_utils import initialize_session
+from utils.media_stream_utils import initialize_session, send_default_conversation_item
 from azure.core.credentials import AzureKeyCredential
 from config import OPENAI_API_KEY, OPENAI_MODEL, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, LOG_EVENT_TYPES
 from rtclient import (
@@ -40,6 +40,7 @@ async def handle_media_stream(websocket: WebSocket):
             model=None if is_azure else OPENAI_MODEL
         ) as client:
             await initialize_session(client)
+            await send_default_conversation_item(client)
         
             stream_sid = None
             event_id = None

@@ -22,13 +22,34 @@ async def initialize_session(client_ws):
                                           )
     
     await client_ws.send(session_update)
-    await send_initial_conversation_item(client_ws)
 
-async def send_initial_conversation_item(client_ws):
+async def send_default_conversation_item(client_ws):
     logger.info("Sending initial conversation item.")  
 
     content_part = InputTextContentPart(
         text="Greet the user with very positive Morning Hello. Ask them how was the sleep last night."
+    )
+    initial_conversation_item = ItemCreateMessage(item=UserMessageItem(content=[content_part]))
+    
+    await client_ws.send(initial_conversation_item)
+    await client_ws.send(ResponseCreateMessage())
+    
+async def send_custom_conversation_item(client_ws, text):
+    logger.info("Sending initial conversation item.")  
+
+    content_part = InputTextContentPart(
+        text=text
+    )
+    initial_conversation_item = ItemCreateMessage(item=UserMessageItem(content=[content_part]))
+    
+    await client_ws.send(initial_conversation_item)
+    await client_ws.send(ResponseCreateMessage())
+    
+async def send_user_conversation_item(client_ws, user_id):
+    logger.info("Sending user custom conversation item from memory.")  
+
+    content_part = InputTextContentPart(
+        text=""
     )
     initial_conversation_item = ItemCreateMessage(item=UserMessageItem(content=[content_part]))
     
