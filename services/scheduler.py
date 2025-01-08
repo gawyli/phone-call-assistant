@@ -27,3 +27,4 @@ def schedule_outgoing_call(call_time: str = "07:00"):
     )
     scheduler.start()
     logger.info("BackgroundScheduler started.")
+    return scheduler
