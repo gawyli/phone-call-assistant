@@ -31,6 +31,7 @@ class RTLowLevelClient:
         key_credential: Optional[AzureKeyCredential] = None,
         model: Optional[str] = None,
         azure_deployment: Optional[str] = None,
+        prompt: Optional[str] = None,
     ):
         self._is_azure_openai = url is not None
         if self._is_azure_openai:
@@ -51,6 +52,7 @@ class RTLowLevelClient:
         self._model = model
         self._azure_deployment = azure_deployment
         self.request_id: Optional[uuid.UUID] = None
+        self.prompt = prompt
 
     async def _get_auth(self):
         if self._token_credential:

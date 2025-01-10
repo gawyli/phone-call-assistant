@@ -1,6 +1,6 @@
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, Query
 from fastapi.websockets import WebSocketDisconnect
-from utils.media_stream_utils import initialize_session, send_default_conversation_item
+from utils.media_stream_utils import initialize_session, send_default_conversation_item, send_custom_conversation_item
 from azure.core.credentials import AzureKeyCredential
 from config import OPENAI_API_KEY, OPENAI_MODEL, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, LOG_EVENT_TYPES
 from rtclient import (
@@ -8,6 +8,7 @@ from rtclient import (
     RTLowLevelClient,
     ItemTruncatedMessage,
 )
+from services.cosmosdb_service import CosmosDBService
 import json
 import base64
 import asyncio
@@ -17,14 +18,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 router_media = APIRouter()
-
+#TODO: add user id
 @router_media.websocket("/media-stream")
-async def handle_media_stream(websocket: WebSocket):
+async def handle_media_stream(websocket: WebSocket, phone_number: str = Query(..., description="The phone number to query")):
     try:
         logger.info("Client connected to /media-stream.")
         print("Client connected")
 
         await websocket.accept()
+
+        # Query CosmosDB for personalized prompt
+        cosmos_service = CosmosDBService()
+        query = "SELECT * FROM c WHERE c.PhoneNumber = @phone_number"
+        parameters = [{"name": "@phone_number", "value": phone_number}]
+        items = cosmos_service.query_items(query, parameters)
+        
+        if items:
+            personalized_prompt = items[0].get("Preferences", {}).get("PersonalisedPrompt")
+        else:
+            personalized_prompt = "Greet the user with very positive Morning Hello. Ask them how was the sleep last night."
 
         is_azure = False
         if not OPENAI_API_KEY or not OPENAI_MODEL:
@@ -37,10 +49,11 @@ async def handle_media_stream(websocket: WebSocket):
             url=AZURE_OPENAI_ENDPOINT if is_azure else None,
             key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY if is_azure else OPENAI_API_KEY),
             azure_deployment=AZURE_OPENAI_DEPLOYMENT if is_azure else None,
-            model=None if is_azure else OPENAI_MODEL
+            model=None if is_azure else OPENAI_MODEL,
+            personalized_prompt=personalized_prompt
         ) as client:
             await initialize_session(client)
-            await send_default_conversation_item(client)
+            await send_custom_conversation_item(client, client.prompt)
         
             stream_sid = None
             event_id = None
