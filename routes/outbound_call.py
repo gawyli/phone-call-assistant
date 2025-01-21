@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Request, Query, Depends
 from fastapi.responses import HTMLResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Connect
+from utils.twilio_auth_utils import twilio_signature_verifier
 from config import OUTBOUND_PHONE_NUMBER, ACCOUNT_SID, AUTH_TOKEN, CALLER_ID, WEBHOOK_HOST
 import logging
 
@@ -17,7 +18,7 @@ async def make_outgoing_call(phone_number: str = Query(..., description="The pho
         return {"error": "Missing configuration or phone number."}
     
     client = Client(ACCOUNT_SID, AUTH_TOKEN)
-    webhook_url = f"https://{WEBHOOK_HOST}/outcoming-call-webhook?phone_number={phone_number}"
+    webhook_url = f"https://{WEBHOOK_HOST}/outcoming-call-webhook"
     
     call = client.calls.create(
         to=phone_number,
@@ -29,9 +30,14 @@ async def make_outgoing_call(phone_number: str = Query(..., description="The pho
     logger.info(f"Outbound call initiated: {call.sid}")
     return {"message": f"Calling {OUTBOUND_PHONE_NUMBER}. Call SID: {call.sid}"}
 
-@router_outcoming.api_route("/outcoming-call-webhook", methods=["GET", "POST"])
+@router_outcoming.api_route("/outcoming-call-webhook", methods=["POST"], dependencies=[Depends(twilio_signature_verifier)])
 async def handle_outcoming_call_webhook(request: Request):
     logger.info("Outbound call webhook triggered.")
+
+    # Get form data from the request
+    form_data = await request.form()
+    phone_number = form_data.get('To')
+
     response = VoiceResponse()
     response.say("Connecting to the personal assistant.")
     response.pause(length=1)
@@ -39,8 +45,11 @@ async def handle_outcoming_call_webhook(request: Request):
     # Connect to media stream websocket
     host = WEBHOOK_HOST #request.url.hostname <- in prod we use this instead of hardcoded value
     connect = Connect()
-    phone_number = request.query_params.get("phone_number")
-    connect.stream(url=f'wss://{host}/media-stream?phone_number={phone_number}')
+    
+    stream = connect.stream(url=f'wss://{host}/media-stream')
+    if phone_number:
+        stream.parameter(name="phone_number", value=phone_number)  # Pass phone_number as a query parameter
+    
     response.append(connect)
     
     logger.info("Returning TwiML for outbound call.")
