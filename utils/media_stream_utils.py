@@ -12,9 +12,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def initialize_session(client_ws):
-    logger.info(f"Initializing {client_ws._azure_deployment} session.")
+    logger.info(f"Initializing {client_ws._url} session.")
     session_update = SessionUpdateMessage(session=SessionUpdateParams(
-                                            voice="dan",
+                                            voice="alloy",
                                             input_audio_format="g711_ulaw",
                                             output_audio_format="g711_ulaw",
                                             turn_detection=ServerVAD(type="server_vad"),                  
