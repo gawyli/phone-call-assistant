@@ -1,52 +1,40 @@
 from azure.cosmos import CosmosClient, exceptions
+from azure.identity import DefaultAzureCredential
 from config import COSMOSDB_URI, COSMOSDB_KEY, COSMOSDB_DATABASE_NAME, COSMOSDB_CONTAINER_NAME
+import logging
+from typing import List, Dict, Any
+import asyncio
+
+logger = logging.getLogger(__name__)
+credential = DefaultAzureCredential()
 
 class CosmosDBService:
     def __init__(self):
-        self.client = CosmosClient(COSMOSDB_URI, COSMOSDB_KEY)
+        self.client = CosmosClient(COSMOSDB_URI, credential=credential)
         self.database = self.client.get_database_client(COSMOSDB_DATABASE_NAME)
         self.container = self.database.get_container_client(COSMOSDB_CONTAINER_NAME)
+        logger.info("CosmosDBService initialized")
 
-    def query_items(self, query: str, parameters: list = None):
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # CosmosClient doesn't need explicit closing
+        self.client = None
+        logger.info("CosmosDB context exited")
+
+    async def query_items(self, query: str, parameters: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        logger.info(f"Querying items with query: {query} and parameters: {parameters}")
         try:
-            items = list(self.container.query_items(
-                query=query,
-                parameters=parameters,
-                enable_cross_partition_query=True
-            ))
+            items = await asyncio.to_thread(
+                lambda: list(self.container.query_items(
+                    query=query,
+                    parameters=parameters,
+                    enable_cross_partition_query=True
+                ))
+            )
+            logger.info(f"Query returned {len(items)} items")
             return items
         except exceptions.CosmosHttpResponseError as e:
-            print(f"An error occurred: {e}")
+            logger.error(f"An error occurred during query: {e}")
             return []
-
-    def get_item(self, item_id: str, partition_key: str):
-        try:
-            item = self.container.read_item(item=item_id, partition_key=partition_key)
-            return item
-        except exceptions.CosmosHttpResponseError as e:
-            print(f"An error occurred: {e}")
-            return None
-
-    def create_item(self, item: dict):
-        try:
-            self.container.create_item(body=item)
-            return True
-        except exceptions.CosmosHttpResponseError as e:
-            print(f"An error occurred: {e}")
-            return False
-
-    def update_item(self, item_id: str, partition_key: str, updated_item: dict):
-        try:
-            self.container.replace_item(item=item_id, body=updated_item)
-            return True
-        except exceptions.CosmosHttpResponseError as e:
-            print(f"An error occurred: {e}")
-            return False
-
-    def delete_item(self, item_id: str, partition_key: str):
-        try:
-            self.container.delete_item(item=item_id, partition_key=partition_key)
-            return True
-        except exceptions.CosmosHttpResponseError as e:
-            print(f"An error occurred: {e}")
-            return False

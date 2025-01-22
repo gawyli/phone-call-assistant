@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Connect
 from utils.twilio_auth_utils import twilio_signature_verifier
+from utils.azure_auth_utils import azure_scheme
 from config import OUTBOUND_PHONE_NUMBER, ACCOUNT_SID, AUTH_TOKEN, CALLER_ID, WEBHOOK_HOST
 import logging
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 router_outcoming = APIRouter()
 
-@router_outcoming.get("/outcoming-call")
+@router_outcoming.get("/outcoming-call")    #you can add depends on azure_schema to enable Azure Auth e.g: dependencies=[Depends(azure_scheme)]
 async def make_outgoing_call(phone_number: str = Query(..., description="The phone number to query")):
     logger.info("Initiates the outbound call.")
     if not (phone_number and ACCOUNT_SID and AUTH_TOKEN and CALLER_ID):

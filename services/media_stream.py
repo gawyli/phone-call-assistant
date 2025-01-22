@@ -8,7 +8,8 @@ from rtclient import (
     RTLowLevelClient,
     ItemTruncatedMessage,
 )
-from services.cosmosdb_service import CosmosDBService
+#from services.cosmosdb_service import CosmosDBService
+#from azure.cosmos.exceptions import CosmosHttpResponseError
 import json
 import base64
 import asyncio
@@ -18,26 +19,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 router_media = APIRouter()
-#TODO: add user id
+
 @router_media.websocket("/media-stream")
-async def handle_media_stream(websocket: WebSocket, phone_number: str = Query(..., description="The phone number to query")):
+async def handle_media_stream(websocket: WebSocket):
     try:
         logger.info("Client connected to /media-stream.")
         print("Client connected")
-
-        await websocket.accept()
-
-        # Query CosmosDB for personalized prompt
-        cosmos_service = CosmosDBService()
-        query = "SELECT * FROM c WHERE c.PhoneNumber = @phone_number"
-        parameters = [{"name": "@phone_number", "value": phone_number}]
-        items = cosmos_service.query_items(query, parameters)
         
-        if items:
-            personalized_prompt = items[0].get("Preferences", {}).get("PersonalisedPrompt")
-        else:
-            personalized_prompt = "Greet the user with very positive Morning Hello. Ask them how was the sleep last night."
-
+        await websocket.accept()
+        
         is_azure = False
         if not OPENAI_API_KEY or not OPENAI_MODEL:
             is_azure = True
@@ -49,12 +39,10 @@ async def handle_media_stream(websocket: WebSocket, phone_number: str = Query(..
             url=AZURE_OPENAI_ENDPOINT if is_azure else None,
             key_credential=AzureKeyCredential(AZURE_OPENAI_API_KEY if is_azure else OPENAI_API_KEY),
             azure_deployment=AZURE_OPENAI_DEPLOYMENT if is_azure else None,
-            model=None if is_azure else OPENAI_MODEL,
-            personalized_prompt=personalized_prompt
+            model=None if is_azure else OPENAI_MODEL
         ) as client:
             await initialize_session(client)
-            await send_custom_conversation_item(client, client.prompt)
-        
+            
             stream_sid = None
             event_id = None
             latest_media_timestamp = 0
@@ -75,6 +63,11 @@ async def handle_media_stream(websocket: WebSocket, phone_number: str = Query(..
                             stream_sid = data['start']['streamSid']
                             latest_media_timestamp = 0
                             last_assistant_item = None
+                            if data['event'] == 'start' and data['sequenceNumber'] == '1':
+                                await send_default_conversation_item(client)
+                                #phone_number = data['start']['customParameters'].get('phone_number')
+                                #personalized_prompt = await get_personalized_prompt(phone_number) <-cosmos db
+                                #await send_custom_conversation_item(client, personalized_prompt) <- uses prompt from cosmosdb  
                         elif data['event'] == 'mark':
                             if mark_queue:
                                 mark_queue.pop(0)
@@ -134,3 +127,30 @@ async def handle_media_stream(websocket: WebSocket, phone_number: str = Query(..
     except Exception as e:
         logger.error(f"Error from /media-stream: {e}")
         await websocket.close()
+
+# Uncomment if you have CosmosDb
+#async def get_personalized_prompt(phone_number: str) -> str:
+#    DEFAULT_PROMPT = "Greet the user with very positive Morning Hello. Ask them how was the sleep last night."
+    
+#    if not phone_number or not phone_number.strip():
+#        logger.warning("Empty phone number provided")
+#        return DEFAULT_PROMPT
+        
+#    try:
+        # Use async context manager here
+#        async with CosmosDBService() as cosmos_service:
+#            query = "SELECT c.Preferences.PersonalisedPrompt FROM c WHERE c.PhoneNumber = @phone_number"
+#            parameters = [dict(name='@phone_number', value=phone_number)]
+            
+#            items = await cosmos_service.query_items(query, parameters)
+#            if items and items[0].get("PersonalisedPrompt"):
+#                return items[0]["PersonalisedPrompt"]
+#            logger.info(f"No personalized prompt found for {phone_number}")
+#            return DEFAULT_PROMPT
+            
+#    except CosmosHttpResponseError as e:
+#        logger.error(f"CosmosDB query error: {str(e)}")
+#        return DEFAULT_PROMPT
+#    except Exception as e:
+#        logger.error(f"Unexpected error querying CosmosDB: {str(e)}")
+#        return DEFAULT_PROMPT

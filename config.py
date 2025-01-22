@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from urllib.parse import urlparse
 
 load_dotenv()
 
@@ -9,13 +8,10 @@ AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
 AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
 AZURE_OPENAI_DEPLOYMENT = os.getenv('AZURE_OPENAI_DEPLOYMENT')
 
-parsed_url = urlparse(AZURE_OPENAI_ENDPOINT)
-if not parsed_url.scheme or not parsed_url.netloc:
-    raise ValueError("AZURE_OPENAI_ENDPOINT must be an absolute URL")
-
 AZURE_CLIENT_ID = os.getenv('AZURE_CLIENT_ID')
 AZURE_CLIENT_SECRET = os.getenv('AZURE_CLIENT_SECRET')
 AZURE_TENANT_ID = os.getenv('AZURE_TENANT_ID')
+AZURE_SCOPE = os.getenv('AZURE_SCOPE')
 
 COSMOSDB_URI= os.getenv('COSMOSDB_URI')
 COSMOSDB_KEY= os.getenv('COSMOSDB_KEY')
@@ -42,7 +38,7 @@ LOG_EVENT_TYPES = [
     'input_audio_buffer.speech_stopped', 'input_audio_buffer.speech_started',
     'session.created'
 ]
-OUTBOUND_PHONE_NUMBER = "07402033899"
+OUTBOUND_PHONE_NUMBER = os.getenv('OUTBOUD_PHONE_NUMBER')
 ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
 CALLER_ID = os.getenv('TWILIO_CALLER_ID')  # e.g. +1234567890
