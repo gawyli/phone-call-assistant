@@ -11,13 +11,34 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+#TODO: Add this to the rtclient models (test)
+tools = [
+    {
+        "type": "function",
+        "name": "weather_function",
+        "description": "Give today's weather based on the specified location.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The location given from the user e.g. New York, London, Warsaw.",
+                }
+            },
+            "required": ["location"]
+        }
+    }
+]
+
 async def initialize_session(client_ws):
     logger.info(f"Initializing {client_ws._url} session.")
     session_update = SessionUpdateMessage(session=SessionUpdateParams(
                                             voice="alloy",
                                             input_audio_format="g711_ulaw",
                                             output_audio_format="g711_ulaw",
-                                            turn_detection=ServerVAD(type="server_vad"),                  
+                                            turn_detection=ServerVAD(type="server_vad"),
+                                            tools=tools,
+                                            tool_choice="auto",                  
                                             )
                                           )
     

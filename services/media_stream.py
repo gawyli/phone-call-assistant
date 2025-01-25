@@ -1,5 +1,5 @@
 from fastapi import APIRouter, WebSocket, Query
-from fastapi.websockets import WebSocketDisconnect
+from fastapi.websockets import WebSocketDisconnect, WebSocketState
 from utils.media_stream_utils import initialize_session, send_default_conversation_item, send_custom_conversation_item
 from azure.core.credentials import AzureKeyCredential
 from config import OPENAI_API_KEY, OPENAI_MODEL, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_ENDPOINT, LOG_EVENT_TYPES
@@ -9,6 +9,7 @@ from rtclient import (
     ItemTruncateMessage,
     ItemCreateMessage,
     FunctionCallOutputItem,
+    ResponseCreateMessage,
 )
 #from services.cosmosdb_service import CosmosDBService
 #from azure.cosmos.exceptions import CosmosHttpResponseError
@@ -51,6 +52,7 @@ async def handle_media_stream(websocket: WebSocket):
             last_assistant_item = None
             mark_queue = []
             response_start_timestamp_twilio = None
+            function_call_output_item = None
 
             async def receive_from_twilio():
                 nonlocal stream_sid, latest_media_timestamp, response_start_timestamp_twilio, last_assistant_item
@@ -73,12 +75,15 @@ async def handle_media_stream(websocket: WebSocket):
                         elif data['event'] == 'mark':
                             if mark_queue:
                                 mark_queue.pop(0)
+                        elif data['event'] == 'stop' and not client.closed:
+                            await client.close()
+
                 except WebSocketDisconnect:
                     if not client.closed:
                         await client.close()
 
             async def send_to_twilio():
-                nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio, event_id
+                nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio, event_id, function_call_output_item
                 try:
                     async for azure_openai_message in client:
                         response = azure_openai_message.model_dump()
@@ -100,16 +105,51 @@ async def handle_media_stream(websocket: WebSocket):
                                 event_id = response.get('event_id')
                                 await handle_speech_started_event()
 
-                        #if response.get('type') == 'response.done':
-                            #function_call_id = response.output[0].get("call_id")
-                            #function_name = response.output[0].get("name")
-                            #function_arguments = response.output[0].get("arguments")
-                            #function_result = handle_function_call(function_name, function_arguments)
-                            #conversation_item = ItemCreateMessage(item=FunctionCallOutputItem(call_id=function_call_id, output=function_result))
-                            #await client.send(conversation_item)
+                        if response.get('type') == 'response.done':
+                            response_obj = response.get("response")
+                            if response_obj and "output" in response_obj:
+                                output = response_obj.get("output", [])
+                                if output and isinstance(output, list):
+                                    function_call_output_item = output[0]
+                                    if function_call_output_item.get('type') == 'function_call':
+                                        event_id=response.get('event_id')
+                                        await handle_function_call_event()                                        
+                        
+                        if response.get('type') == 'error' and not websocket.application_state == WebSocketState.DISCONNECTED:
+                            error_message = response['error'].get("message")
+                            logger.critical(f"Error mewssage: {error_message}. Websocket closed. ")
+                            await websocket.close()
 
                 except Exception as e:
-                    print(f"Error in send_to_twilio: {e}")
+                    print(f"Error in send_to_twilio: {e}. Websocket closed")
+                    if not websocket.application_state == WebSocketState.DISCONNECTED:
+                        await websocket.close()
+
+            async def handle_function_call_event():
+                nonlocal function_call_output_item, event_id
+                try:
+                    function_call_id = function_call_output_item.get("call_id")
+                    function_name = function_call_output_item.get("name")
+                    arguments = function_call_output_item.get("arguments")
+                    function_arguments = json.loads(arguments) if arguments else {}
+
+                    # Handle the function call
+                    function_result = handle_function_call(function_name, function_arguments)
+
+                    # Prepare the conversation item for the response
+                    conversation_item = ItemCreateMessage(
+                        event_id=event_id,
+                        item=FunctionCallOutputItem(
+                            call_id=function_call_id,
+                            output=function_result
+                        )
+                    )
+                    await client.send(conversation_item)
+                    await client.send(ResponseCreateMessage())
+                    event_id = None
+                    function_call_output_item = None
+                except Exception as e:
+                    logger.error(f"Error in handle_function_call_event: {e}")
 
             async def handle_speech_started_event():
                 nonlocal response_start_timestamp_twilio, last_assistant_item, event_id
