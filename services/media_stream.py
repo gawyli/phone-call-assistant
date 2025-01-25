@@ -6,7 +6,9 @@ from config import OPENAI_API_KEY, OPENAI_MODEL, AZURE_OPENAI_API_KEY, AZURE_OPE
 from rtclient import (
     InputAudioBufferAppendMessage,
     RTLowLevelClient,
-    ItemTruncatedMessage,
+    ItemTruncateMessage,
+    ItemCreateMessage,
+    FunctionCallOutputItem,
 )
 #from services.cosmosdb_service import CosmosDBService
 #from azure.cosmos.exceptions import CosmosHttpResponseError
@@ -98,6 +100,14 @@ async def handle_media_stream(websocket: WebSocket):
                                 event_id = response.get('event_id')
                                 await handle_speech_started_event()
 
+                        #if response.get('type') == 'response.done':
+                            #function_call_id = response.output[0].get("call_id")
+                            #function_name = response.output[0].get("name")
+                            #function_arguments = response.output[0].get("arguments")
+                            #function_result = handle_function_call(function_name, function_arguments)
+                            #conversation_item = ItemCreateMessage(item=FunctionCallOutputItem(call_id=function_call_id, output=function_result))
+                            #await client.send(conversation_item)
+
                 except Exception as e:
                     print(f"Error in send_to_twilio: {e}")
 
@@ -106,7 +116,7 @@ async def handle_media_stream(websocket: WebSocket):
                 if mark_queue and response_start_timestamp_twilio is not None:
                     elapsed_time = latest_media_timestamp - response_start_timestamp_twilio
                     if last_assistant_item:
-                        truncate_message = ItemTruncatedMessage(event_id=event_id, 
+                        truncate_message = ItemTruncateMessage(event_id=event_id, 
                                                                 item_id=last_assistant_item, 
                                                                 content_index=0, 
                                                                 audio_end_ms=elapsed_time)
@@ -127,6 +137,19 @@ async def handle_media_stream(websocket: WebSocket):
     except Exception as e:
         logger.error(f"Error from /media-stream: {e}")
         await websocket.close()
+
+def handle_function_call(func_name: str, payload: dict):
+    dispatch_map = {
+        "weather_function": weather_function,
+    }
+    if func_name in dispatch_map:
+        return dispatch_map[func_name](**payload)
+    else:
+        raise ValueError(f"Unknown function: {func_name}")
+
+def weather_function(location: str):
+    return f"In {location} is 24 celcious degree"
+
 
 # Uncomment if you have CosmosDb
 #async def get_personalized_prompt(phone_number: str) -> str:
